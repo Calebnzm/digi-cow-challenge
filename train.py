@@ -34,7 +34,7 @@ import torch.optim as optim
 from imblearn.over_sampling import SMOTE
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics import log_loss, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -261,17 +261,33 @@ def preprocess(df, combined_df):
         "adopted_within_90_days",
         "adopted_within_120_days",
     ]
-    CAT_COLS = ["county", "sub_county", "ward", "trainer"]
+    CAT_COLS = ["gender", "registration", "age", "group_name", "county", "subcounty", "ward", "trainer"]
     NUM_COLS = [
+        "belong_to_cooperative",
+        "has_topic_trained_on",
         "training_year",
         "training_month",
         "training_day_number",
         "training_dayofweek",
-        "number_attendees",
     ]
 
     # --- TF-IDF ---
-    tfidf = TfidfVectorizer(max_features=500, ngram_range=(1, 2), min_df=5)
+    custom_stopwords = list(set(ENGLISH_STOP_WORDS).union({
+        'how', 'to', 'from', 'with', 'your', 'for', 'the', 'and', 'in', 'of', 'a', 'an',
+        'day', 'old', 'care', 'using', 'about', 'on', 'at', 'by', 'after', 'before',
+        'week', 'weeks', 'maturity', 'products', 'product', 'use', 'uses', 'used',
+        'new', 'best', 'good', 'better', 'right', 'proper', 'important', 'importance'
+    }))
+    tfidf = TfidfVectorizer(
+        max_features=100,
+        ngram_range=(1, 2),
+        min_df=3,
+        max_df=0.85,
+        sublinear_tf=True,
+        stop_words=custom_stopwords,
+        lowercase=True,
+        token_pattern=r'\b[a-z]{3,}\b'
+    )
     tfidf_matrix = tfidf.fit_transform(df["topic_text"])
     tfidf_feature_names = [f"tfidf_{f}" for f in tfidf.get_feature_names_out()]
     tfidf_df = pd.DataFrame(
@@ -982,8 +998,9 @@ def generate_submissions(
     test_df["training_dayofweek"] = test_df["training_day"].dt.dayofweek
 
     NUM_COLS = [
+        "belong_to_cooperative", "has_topic_trained_on",
         "training_year", "training_month", "training_day_number",
-        "training_dayofweek", "number_attendees",
+        "training_dayofweek",
     ]
     X_test_num = test_df[NUM_COLS].copy()
     X_test_cat = test_df[CAT_COLS].copy().astype(str).fillna("NA")
