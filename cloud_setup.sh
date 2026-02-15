@@ -51,23 +51,17 @@ echo "  ✓ uv: $(uv --version)"
 # --- 4. Setup project ---
 echo ""
 echo "[4/6] Setting up project environment..."
-PROJECT_DIR="${1:-/workspace/digicow}"
+# Default to current directory (works with git clone workflow)
+PROJECT_DIR="${1:-$(pwd)}"
 
-if [ ! -d "$PROJECT_DIR" ]; then
-    echo "  Creating project directory: $PROJECT_DIR"
-    mkdir -p "$PROJECT_DIR"
+if [ ! -f "$PROJECT_DIR/pyproject.toml" ] && [ ! -f "$PROJECT_DIR/train.py" ]; then
+    echo "  ⚠  Project files not found in: $PROJECT_DIR"
+    echo "     Make sure you run this script from your cloned repo directory:"
+    echo "       cd /workspace/digi-cow-challenge"
+    echo "       ./cloud_setup.sh"
     echo ""
-    echo "  ⚠  You need to upload your project files to: $PROJECT_DIR"
-    echo "     Required files:"
-    echo "       - train.py"
-    echo "       - pyproject.toml"
-    echo "       - Original Data/Train.csv"
-    echo "       - Original Data/Prior.csv"
-    echo "       - Original Data/Test.csv"
-    echo ""
-    echo "     From your LOCAL machine, run:"
-    echo "       scp -P <PORT> -r '/path/to/DigiCow Farmer Training Adoption Challenge/.' root@141.0.85.201:$PROJECT_DIR/"
-    echo ""
+    echo "     Or specify the project directory:"
+    echo "       ./cloud_setup.sh /path/to/project"
 fi
 
 cd "$PROJECT_DIR"
@@ -98,7 +92,7 @@ if torch.cuda.is_available():
     print(f'  CUDA version: {torch.version.cuda}')
     for i in range(torch.cuda.device_count()):
         props = torch.cuda.get_device_properties(i)
-        vram = props.total_mem / (1024**3)
+        vram = props.total_memory / (1024**3)
         print(f'  GPU {i}: {props.name} ({vram:.1f} GB VRAM)')
     print('  ✓ GPU is ready!')
 else:

@@ -138,7 +138,7 @@ def print_system_info():
         print(f"  GPU count:       {torch.cuda.device_count()}")
         for i in range(torch.cuda.device_count()):
             props = torch.cuda.get_device_properties(i)
-            vram_gb = props.total_mem / (1024**3)
+            vram_gb = props.total_memory / (1024**3)
             print(f"  GPU {i}: {props.name}")
             print(f"    VRAM:          {vram_gb:.1f} GB")
             print(f"    Compute:       {props.major}.{props.minor}")
