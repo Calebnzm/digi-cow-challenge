@@ -17,28 +17,29 @@ ssh -p <PORT> root@141.0.85.201
 
 ---
 
-## 2. Upload Project Files
+## 2. Get Project Files onto the Instance
 
-From your **local machine**, upload the project:
+### Option A: Git Clone (Recommended)
+
+Since you pushed to GitHub, just clone directly on the instance:
 
 ```bash
-# Upload everything in one go
-scp -P <PORT> -r "/home/nzioka/Desktop/CS/Zindi/DigiCow Farmer Training Adoption Challenge/." \
-    root@141.0.85.201:/workspace/digicow/
+git clone https://github.com/Calebnzm/digi-cow-challenge.git /workspace/digi-cow-challenge
+cd /workspace/digi-cow-challenge
 ```
 
-Or upload only the essential files (faster):
+Then upload the **data files** (these aren't in git) from your **local machine**:
 
 ```bash
-# Create remote directory
-ssh -p <PORT> root@141.0.85.201 "mkdir -p /workspace/digicow/'Original Data'"
-
-# Upload essentials
-scp -P <PORT> train.py pyproject.toml cloud_setup.sh \
-    root@141.0.85.201:/workspace/digicow/
-
 scp -P <PORT> "Original Data/Train.csv" "Original Data/Prior.csv" "Original Data/Test.csv" \
-    root@141.0.85.201:/workspace/digicow/'Original Data'/
+    root@141.0.85.201:/workspace/digi-cow-challenge/'Original Data'/
+```
+
+### Option B: SCP everything
+
+```bash
+scp -P <PORT> -r "/home/nzioka/Desktop/CS/Zindi/DigiCow Farmer Training Adoption Challenge/." \
+    root@141.0.85.201:/workspace/digi-cow-challenge/
 ```
 
 ---
@@ -48,7 +49,7 @@ scp -P <PORT> "Original Data/Train.csv" "Original Data/Prior.csv" "Original Data
 On the **cloud instance**:
 
 ```bash
-cd /workspace/digicow
+cd /workspace/digi-cow-challenge
 chmod +x cloud_setup.sh
 ./cloud_setup.sh
 ```
@@ -60,7 +61,7 @@ This installs all dependencies and verifies your GPU is accessible.
 ## 4. Start Training
 
 ```bash
-cd /workspace/digicow
+cd /workspace/digi-cow-challenge
 source .venv/bin/activate
 ```
 
@@ -89,20 +90,100 @@ python train.py --output-dir results/
 python train.py --help
 ```
 
-### Run in Background (Recommended)
+---
 
-Use `tmux` so training continues if you disconnect:
+## 5. Using tmux (Run Training in the Background)
 
+**Why tmux?** If your SSH connection drops (laptop sleeps, Wi-Fi hiccup, etc.), any running command dies with it. `tmux` keeps your training alive on the server even if you disconnect.
+
+Think of it as a "virtual terminal" that lives on the server.
+
+### Step-by-step
+
+**1. Start a new tmux session** (give it a name like "train"):
 ```bash
 tmux new -s train
+```
+
+You'll see a green bar at the bottom — that means you're inside tmux.
+
+**2. Run your training command** (you're now inside tmux):
+```bash
+cd /workspace/digi-cow-challenge
+source .venv/bin/activate
 python train.py 2>&1 | tee training.log
 ```
 
-| tmux Command | Action |
+> [!NOTE]
+> `2>&1 | tee training.log` saves all output to `training.log` AND still shows it on screen. This way you have a record even after the session ends.
+
+**3. Detach from tmux** (training keeps running in background):
+- Press **`Ctrl+B`**, release both keys, then press **`D`**
+- You'll see `[detached (from session train)]`
+- You can now safely close your SSH connection — training continues!
+
+**4. Come back later** — reconnect SSH and reattach:
+```bash
+ssh -p <PORT> root@141.0.85.201
+tmux attach -t train
+```
+
+You'll see your training output exactly where you left off.
+
+**5. When training is done**, exit tmux:
+```bash
+exit
+```
+
+### Visual Flow
+
+```
+You (laptop) ──SSH──▶ Cloud Instance
+                          │
+                     ┌────┴────┐
+                     │  tmux   │  ◀── lives on the server
+                     │ "train" │
+                     ├─────────┤
+                     │ python  │  ◀── your training runs here
+                     │ train.py│
+                     └─────────┘
+
+  SSH drops? ──✗──▶  tmux keeps running ✓
+  Reconnect: tmux attach -t train
+```
+
+### tmux Commands Cheat Sheet
+
+| Action | What to type |
 |---|---|
-| `Ctrl+B`, then `D` | Detach (training continues) |
-| `tmux attach -t train` | Reattach to see progress |
-| `tmux kill-session -t train` | Stop the session |
+| Start a new session | `tmux new -s train` |
+| Detach (go to background) | `Ctrl+B`, then `D` |
+| Reattach to session | `tmux attach -t train` |
+| List all sessions | `tmux ls` |
+| Kill a session | `tmux kill-session -t train` |
+| Scroll up in tmux | `Ctrl+B`, then `[`, then arrow keys. Press `q` to exit scroll |
+
+### Running with Different Arguments in tmux
+
+It works exactly the same — just type your full command inside the tmux session:
+
+```bash
+# Start tmux
+tmux new -s train
+
+# Then run whatever command you want:
+python train.py --models nn rwn --n-splits 3 --skip-ablation 2>&1 | tee training.log
+
+# Detach: Ctrl+B, then D
+```
+
+To run a **different training** later, just kill the old session and start a new one:
+
+```bash
+tmux kill-session -t train
+tmux new -s train
+python train.py --models rf 2>&1 | tee training_rf.log
+```
 
 ---
 
@@ -126,11 +207,11 @@ After training completes, from your **local machine**:
 
 ```bash
 # Download all submission CSVs
-scp -P <PORT> root@141.0.85.201:/workspace/digicow/submission_*.csv \
+scp -P <PORT> root@141.0.85.201:/workspace/digi-cow-challenge/submission_*.csv \
     "/home/nzioka/Desktop/CS/Zindi/DigiCow Farmer Training Adoption Challenge/"
 
 # Download training log
-scp -P <PORT> root@141.0.85.201:/workspace/digicow/training.log \
+scp -P <PORT> root@141.0.85.201:/workspace/digi-cow-challenge/training.log \
     "/home/nzioka/Desktop/CS/Zindi/DigiCow Farmer Training Adoption Challenge/"
 ```
 
