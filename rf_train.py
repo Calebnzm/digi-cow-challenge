@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-DigiCow Farmer Training Adoption Challenge — Training Script
-=============================================================
-Standalone script version of improved_models.ipynb.
-RF model with Word2Vec cluster-distance features.
+DigiCow Farmer Training Adoption Challenge — RF Training Script
+================================================================
+Random Forest with Word2Vec cluster-distance features.
+Script version of improved_models.ipynb for easy terminal execution.
 
 Usage:
-    python train.py                          # Run RF
-    python train.py --n-splits 3 --seed 42   # Custom folds/seed
-    python train.py --output-dir results/    # Save submissions elsewhere
+    python rf_train.py                          # Run with defaults
+    python rf_train.py --n-splits 3 --seed 42   # Custom folds/seed
+    python rf_train.py --force-k 8              # Force k=8 clusters
+    python rf_train.py --output-dir results/    # Save submissions elsewhere
+    python rf_train.py --skip-plots             # Skip cluster plots (cloud)
 
 Designed for cloud GPU instances (e.g. Vast.ai RTX 5060 Ti).
 """
